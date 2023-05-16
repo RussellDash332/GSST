@@ -1,6 +1,6 @@
 import os
-from Graph import Graph
-from algorithms import GSST_L
+from graph import Graph
+from gsst import GSST_L
 import sys
 
 test_graph_only = False

@@ -43,7 +43,13 @@ def test_GSST_R(rep=10):
         G.visualize(save=True, filename=fn.format(f'{idx}_graph.png'))
         pickle.dump(G, open(f'gif/{idx}_graph.pkl', 'wb'))
         gsst_r = GSST_R(graph=G, filename=fn.format(idx))
-        gsst_r.search(visualize=False)
+        gsst_r.search()
+        import networkx as nx
+        import matplotlib.pyplot as plt
+        pos = nx.spring_layout(G.g)
+        nx.draw(G.g, pos, node_size=200, node_color='yellow', font_size=8, font_weight='bold')
+        nx.draw_networkx_labels(G.g, pos, {i:i for i in G.g.nodes}, font_size=12)
+        plt.savefig("test.png", format="PNG")
 
 def main():
     # test_trees(10)

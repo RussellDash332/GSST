@@ -52,6 +52,9 @@ class GSST:
 
     ## Might not be correct, think about labels?
     def can_move_searcher(self, node) -> bool:
+        '''
+        Checks if we can move a searcher from node.
+        '''
         if self.searcher_per_locations[node] > 1:
             return True
         if self.searcher_per_locations[node] == 0:
@@ -272,7 +275,6 @@ class GSST_L(GSST):
     def after_search_step(self) -> None:
         if self.to_guard == None:
             return
-
         node = self.to_guard
         self.to_guard = None
         if self.unvisited_g[node] == 0 or\
@@ -308,7 +310,7 @@ class GSST_R(GSST):
         '''
         Variant of GSST as shown in Algorithm 6.
         '''
-        self.number_of_guards = 0
+        self.number_of_guards = 0 # no guard needed
         self.N = graph.g.number_of_nodes()
 
         super().__init__(graph, filename=filename)
@@ -318,29 +320,42 @@ class GSST_R(GSST):
         self.history.clear()
         self.save_history()
 
-    def search(self, visualize=False) -> None:
+    def can_move_searcher(self, node) -> bool:
+        '''
+        Checks if we can move a searcher from node.
+        '''
+        raise NotImplementedError
+
+    def search(self) -> None:
         '''
         Performs Algorithm 6, ignores tree labelings.
         '''
         print('Search started with {} searchers'.format(self.num_searcher))
-        self.png_saved = visualize
-        if visualize:
-            self.history[-1].visualize(save=True, filename=f'{self.fn}_{self.t}.png')
+        N_c = {'sta'}
         while len(self.to_visit) != 0:
             if self.t > WALL_TIME * self.N:
                 print(f'INTERRUPTED!\nTime: {self.t}, Number of searchers: {self.num_searcher}, unvisited area: {self.to_visit}')
                 exit()
-            self.search_step()
+            self.search_step(N_c)
             self.set_node_attributes()      
             self.save_history()
             self.t += 1
-            if visualize:
-                self.visualize_step(self.t)
 
-    def search_step(self) -> None:
+    def search_step(self, N_c) -> None:
         '''
         Performs search for a single step.
         '''
-        print(self.__dict__)
-        print(self.spanning_tree.g.edges())
-        exit()
+        edges = [(a, b) for a, b in self.spanning_tree.g.edges() if a in N_c]
+        src, nxt = choice(edges)
+        if self.can_move_searcher(src):
+            for idx in range(self.num_searcher):
+                if self.searcher_locations[idx] == src:
+                    self.move_searcher(idx, nxt)
+                    break
+            N_c.add(nxt)
+        else:
+            # generate a new searcher at the root
+            self.searcher_locations.append('sta')
+            self.searcher_per_locations['sta'] += 1
+            self.num_searcher += 1
+        print(self.to_visit, self.searcher_locations)

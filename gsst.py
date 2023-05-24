@@ -2,11 +2,21 @@ import numpy as np
 import networkx as nx
 from copy import deepcopy
 from graph import Graph
-from random import choice
+from random import choice, seed
 import os
 import imageio
 
 WALL_TIME = 5
+
+class Searcher:
+    sid = -1
+    def __init__(self, guard=False):
+        Searcher.sid += 1
+        self.id = Searcher.sid
+        seed(self.id)
+        self.color = choice(['red', 'green', 'cyan', 'yellow', 'limegreen', 'blue', 'purple', 'orange'])
+        if guard: self.color = 'black'
+
 class GSST:
     def __init__(self, graph:"Graph"=None, tree:"Graph"=None, filename='test_run') -> None:
         if tree == None:
@@ -40,6 +50,8 @@ class GSST:
         self.searcher_locations = ['sta' for _ in range(self.num_searcher)]
         self.searcher_per_locations = {i: 0 for i in self.graph.g.nodes()}
         self.searcher_per_locations['sta'] = self.num_searcher
+        self.searcher_per_locations_viz = {i: [] for i in self.graph.g.nodes()}
+        self.searcher_per_locations_viz['sta'] = [Searcher() for _ in range(self.num_searcher)]
 
         self.set_node_attributes()
         self.history = []
@@ -49,6 +61,7 @@ class GSST:
     def set_node_attributes(self) -> None:
         nx.set_node_attributes(self.graph.g, self.searcher_per_locations, 'searcher_number')
         nx.set_node_attributes(self.graph.g, self.visited, 'visited')
+        nx.set_node_attributes(self.graph.g, self.searcher_per_locations_viz, 'searcher_viz')
 
     ## Might not be correct, think about labels?
     def can_move_searcher(self, node) -> bool:
@@ -74,9 +87,11 @@ class GSST:
         '''
         prev_node = self.searcher_locations[num]
         self.searcher_per_locations[prev_node] -= 1
+        prev_s = self.searcher_per_locations_viz[prev_node].pop()
 
         self.searcher_locations[num] = node
         self.searcher_per_locations[node] += 1
+        self.searcher_per_locations_viz[node].append(prev_s)
 
         if self.visited[node] == False:
             self.searcher_to_new_node(node)
@@ -131,6 +146,7 @@ class GSST:
         self.png_saved = visualize
         if visualize:
             self.history[-1].visualize(save=True, filename=f'{self.fn}_{self.t}.png')
+            self.history[-1].visualize(save=True, filename=f'{self.fn}_{self.t}_robot.png', robot=True)
         while len(self.to_visit) != 0:
             if self.t > WALL_TIME * self.N:
                 print(f'INTERRUPTED!\nTime: {self.t}, Number of searchers: {self.num_searcher}, unvisited area: {self.to_visit}')
@@ -149,9 +165,16 @@ class GSST:
                 self.visualize_step(i)
             fns.append(f'{self.fn}_{i}.png')
         imageio.mimsave(f'{self.fn}.mp4', [imageio.imread(filename) for filename in fns], fps=2)
+        fns = []
+        for i in range(self.t + 1):
+            if not self.png_saved:
+                self.visualize_step(i)
+            fns.append(f'{self.fn}_{i}_robot.png')
+        imageio.mimsave(f'{self.fn}_robot.mp4', [imageio.imread(filename) for filename in fns], fps=2)
 
     def visualize_step(self, step: int) -> None:
         self.history[step].visualize(save=True, filename=f'{self.fn}_{step}.png', step=step)
+        self.history[step].visualize(save=True, filename=f'{self.fn}_{step}_robot.png', robot=True, step=step)
 
 class GSST_L(GSST):
     def __init__(self, graph: Graph=None, filename='test_run') -> None:
@@ -163,6 +186,8 @@ class GSST_L(GSST):
         # Initially no guard needed at all
         self.guard_per_locations = {i: 0 for i in graph.g.nodes()}
         self.guard_per_locations['sta'] = self.number_of_guards
+        self.guard_per_locations_viz = {i: [] for i in graph.g.nodes()}
+        self.guard_per_locations_viz['sta'] = [Searcher(guard=True) for _ in range(self.number_of_guards)]
         self.to_guard = None
 
         super().__init__(graph, filename=filename)
@@ -211,6 +236,7 @@ class GSST_L(GSST):
         assert self.guard_per_locations['sta'] == 0 or self.print_guard_info('Have existing guards available')
         self.guard_locations.append('sta')
         self.guard_per_locations['sta'] += 1
+        self.guard_per_locations_viz['sta'].append(Searcher(guard=True))
         self.number_of_guards += 1
         return self.number_of_guards - 1
 
@@ -218,8 +244,10 @@ class GSST_L(GSST):
         prev_loc = self.guard_locations[guard]
         if prev_loc != None:
             self.guard_per_locations[prev_loc] -= 1
+            self.guard_per_locations_viz[prev_loc].pop()
         self.guard_locations[guard] = 'sta'
         self.guard_per_locations['sta'] += 1
+        self.guard_per_locations_viz['sta'].append(Searcher(guard=True))
 
     def add_guard_in_degree(self, guard, deg):
         if deg in self.guard_degree:
@@ -254,10 +282,12 @@ class GSST_L(GSST):
         self.guard_locations[guard] = node
         self.guard_per_locations[node] += 1
         self.guard_per_locations['sta'] -= 1
+        self.guard_per_locations_viz[node].append(self.guard_per_locations_viz['sta'].pop())
 
     def set_node_attributes(self) -> None:
         super().set_node_attributes()
         nx.set_node_attributes(self.graph.g, self.guard_per_locations, 'guard_number')
+        nx.set_node_attributes(self.graph.g, self.guard_per_locations_viz, 'guard_viz')
 
     def searcher_to_new_node(self, node) -> None:
         super().searcher_to_new_node(node)
@@ -286,10 +316,11 @@ class GSST_L(GSST):
     def can_move_searcher(self, node) -> bool:
         tree_can_move = super().can_move_searcher(node)
 
-        print(f'Node {node}: tree_can_move:{tree_can_move}')
-        print(f'unvisited_g: {self.unvisited_g[node]}, unvisited_t: {self.unvisited_t[node]}')
-        print(f'self.guard_per_locations[node]: {self.guard_per_locations[node]}')
-        print(f'self.searcher_per_locations[node]: {self.searcher_per_locations[node]}')
+        #print(f'Node {node}: tree_can_move: {tree_can_move}')
+        #print(f'unvisited_g: {self.unvisited_g[node]}, unvisited_t: {self.unvisited_t[node]}')
+        #print(f'self.guard_per_locations[node]: {self.guard_per_locations[node]}')
+        #print(f'self.searcher_per_locations[node]: {self.searcher_per_locations[node]}')
+
         if self.unvisited_g[node] == 0 and node != 'sta':
             assert self.guard_per_locations[node] == 0 or self.print_guard_info(f'Guard at node {node} should have been cleared')
 

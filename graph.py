@@ -1,7 +1,9 @@
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+from matplotlib.colors import to_rgba
 from collections import Counter
+from random import random
 
 class Graph:
     def __init__(self, arg=None, directed=False, pos=None) -> None:
@@ -202,7 +204,7 @@ class Graph:
         self.g = self.g.to_directed()
         self.label_reverse(parents)
 
-    def visualize(self, save=True, filename='testrun', ax=None, step=None):    
+    def visualize(self, save=True, filename='testrun', ax=None, step=None, robot=False):    
         if hasattr(self, 'fig_size'):
             fig_size = self.fig_size
         else:
@@ -219,7 +221,10 @@ class Graph:
             node_size = 300
 
         if hasattr(self, 'bg'):
-            ax.imshow(self.bg, extent=[0, fig_size[0], 0, fig_size[1]])     
+            ax.imshow(self.bg, extent=[0, fig_size[0], 0, fig_size[1]])
+        elif robot:
+            robot = False
+
         if not self.is_tree():
             if not hasattr(self, 't'):
                 if self.pos is None:
@@ -238,7 +243,10 @@ class Graph:
                     visited_nodes = set('sta')
                 searcher_per_node = nx.get_node_attributes(self.g, 'searcher_number')
                 guard_per_node = nx.get_node_attributes(self.g, 'guard_number')
+                searcher_per_node_viz = nx.get_node_attributes(self.g, 'searcher_viz')
+                guard_per_node_viz = nx.get_node_attributes(self.g, 'guard_viz')
                 robot_per_node = {k: searcher_per_node[k] + guard_per_node[k] for k in searcher_per_node.keys()}
+                robot_per_node_viz = {k: searcher_per_node_viz[k] + guard_per_node_viz[k] for k in searcher_per_node.keys()}
                 node_type = {}
                 for n in self.g.nodes():
                     if n in visited_nodes:
@@ -255,12 +263,24 @@ class Graph:
                         node_colors.append('grey')
                     elif node_type[node] == 'visited':
                         node_colors.append('green')
-                    else:
+                    elif not robot:
                         node_colors.append('cyan')
-                ax.set_title(f'Time: {step if step != None else 0}\nRed: starting point     Green: cleared     Gray: may contain target     Cyan: has searcher', fontsize=17)
+                    else:
+                        node_colors.append('grey')
+                if not robot: ax.set_title(f'Time: {step if step != None else 0}\nRed: starting point     Green: cleared     Gray: may contain target     Cyan: has searcher', fontsize=17)
+                else: ax.set_title(f'Time: {step if step != None else 0}\nRed: starting point     Green: cleared     Gray: may contain target', fontsize=17)
                 node_label = {n: robot_per_node[n] if node_type[n]=='current' else '' for n in self.g.nodes()}
                 nx.draw_networkx_nodes(self.g, pos=pos, node_color=node_colors, node_size=node_size, ax=ax)
-                nx.draw_networkx_labels(self.g, labels=node_label, pos=pos, ax=ax)
+                if not robot:
+                    nx.draw_networkx_labels(self.g, labels=node_label, pos=pos, ax=ax)
+                else:
+                    def get_nudge(node='sta', jitter=0.2):
+                        if node == 'sta': return 0
+                        return (random()*2-1)*jitter
+                    for n in self.g.nodes():
+                        for s in robot_per_node_viz[n]:
+                            x, y = pos[n]
+                            plt.gca().add_patch(plt.Circle((x+get_nudge(n), y+get_nudge(n)), 0.15, facecolor=to_rgba(s.color, alpha=0.5), edgecolor=s.color, zorder=10))
                 tree_edges = self.t.g.edges()
                 non_tree_edges = self.B
                 edge_colors = []
@@ -278,7 +298,7 @@ class Graph:
                     else:
                         edge_colors.append('green')
                 edge_styles = np.array(edge_styles)
-                nx.draw_networkx_edges(self.g, pos=pos, edge_color=edge_colors, style=edge_styles, ax=ax, width=3)
+                if not robot: nx.draw_networkx_edges(self.g, pos=pos, edge_color=edge_colors, style=edge_styles, ax=ax, width=3)
         else:
             if self.g.is_directed():
                 pos = nx.nx_agraph.graphviz_layout(self.t.g, prog='circo',args="-Grankdir=LR", root='sta')
@@ -288,7 +308,10 @@ class Graph:
                     visited_nodes = set('sta')
                 searcher_per_node = nx.get_node_attributes(self.g, 'searcher_number')
                 guard_per_node = nx.get_node_attributes(self.g, 'guard_number')
+                searcher_per_node_viz = nx.get_node_attributes(self.g, 'searcher_viz')
+                guard_per_node_viz = nx.get_node_attributes(self.g, 'guard_viz')
                 robot_per_node = {k: searcher_per_node[k] + guard_per_node[k] for k in searcher_per_node.keys()}
+                robot_per_node_viz = {k: searcher_per_node_viz[k] + guard_per_node_viz[k] for k in searcher_per_node.keys()}
                 node_type = {}
                 for n in self.g.nodes():
                     if n in visited_nodes:
@@ -305,20 +328,31 @@ class Graph:
                         node_colors.append('grey')
                     elif node_type[node] == 'visited':
                         node_colors.append('green')
-                    else:
+                    elif not robot:
                         node_colors.append('cyan')
-                ax.set_title(f'Red: starting point; Green: cleared\nGray: may contain target; Cyan: has searcher\nTime: {step if step != None else 0}', fontsize=17)
+                    else:
+                        node_colors.append('grey')
+                if not robot: ax.set_title(f'Time: {step if step != None else 0}\nRed: starting point     Green: cleared     Gray: may contain target     Cyan: has searcher', fontsize=17)
+                else: ax.set_title(f'Time: {step if step != None else 0}\nRed: starting point     Green: cleared     Gray: may contain target', fontsize=17)
                 node_label = {n: robot_per_node[n] if node_type[n]=='current' else '' for n in self.g.nodes()}
                 nx.draw_networkx_nodes(self.g, pos=pos, node_color=node_colors, node_size=node_size, ax=ax)
-                nx.draw_networkx_labels(self.g, labels=node_label, pos=pos, ax=ax)
+                if not robot:
+                    nx.draw_networkx_labels(self.g, labels=node_label, pos=pos, ax=ax)
+                else:
+                    def get_nudge(node='sta', jitter=0.2):
+                        if node == 'sta': return 0
+                        return (random()*2-1)*jitter
+                    for n in self.g.nodes():
+                        for s in robot_per_node_viz[n]:
+                            x, y = pos[n]
+                            plt.gca().add_patch(plt.Circle((x+get_nudge(n), y+get_nudge(n)), 0.15, facecolor=to_rgba(s.color, alpha=0.5), edgecolor=s.color, zorder=10))
                 G = self.g
                 curved_edges = [edge for edge in G.edges() if reversed(edge) in G.edges()]
                 straight_edges = list(set(G.edges()) - set(curved_edges))
-                nx.draw_networkx_edges(G, pos, ax=ax)
+                if not robot: nx.draw_networkx_edges(G, pos, ax=ax)
             else:
                 pos = nx.nx_agraph.graphviz_layout(self.g, prog='dot')
                 nx.draw(self.g, pos=pos, with_labels=True, node_color='c', ax=ax, node_size=node_size)
-
         if save:
             plt.savefig(filename)
             plt.close()

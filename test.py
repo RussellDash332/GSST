@@ -53,7 +53,7 @@ def test_GSST_R(rep=10):
 
 def main():
     # test_trees(10)
-    test_GSST_L(1)
+    test_GSST_L(5)
     # test_GSST_R(1)
 
 if __name__ == '__main__':

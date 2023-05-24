@@ -49,6 +49,5 @@ g.visualize(save=True, filename=fn+'_tree.png')
 
 gsst_l = GSST_L(graph=g, filename=fn+'/run')
 gsst_l.search(visualize=True)
-print(
-    f'COMPLETED!\nTime: {gsst_l.t}, Number of searchers: {gsst_l.num_searcher}, Number of guards: {gsst_l.number_of_guards}')
+print(f'COMPLETED!\nTime: {gsst_l.t}, Number of searchers: {gsst_l.num_searcher}, Number of guards: {gsst_l.number_of_guards}')
 gsst_l.visualize()

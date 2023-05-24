@@ -148,10 +148,10 @@ class GSST:
             if not self.png_saved:
                 self.visualize_step(i)
             fns.append(f'{self.fn}_{i}.png')
-        imageio.mimsave(f'{self.fn}.gif', [imageio.imread(filename) for filename in fns], duration=1)
+        imageio.mimsave(f'{self.fn}.mp4', [imageio.imread(filename) for filename in fns], fps=2)
 
     def visualize_step(self, step: int) -> None:
-        self.history[step].visualize(save=True, filename=f'{self.fn}_{step}.png')
+        self.history[step].visualize(save=True, filename=f'{self.fn}_{step}.png', step=step)
 
 class GSST_L(GSST):
     def __init__(self, graph: Graph=None, filename='test_run') -> None:

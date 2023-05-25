@@ -3,7 +3,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib.colors import to_rgba
 from collections import Counter
-from random import random
+from random import random, seed
 
 class Graph:
     def __init__(self, arg=None, directed=False, pos=None) -> None:
@@ -204,7 +204,12 @@ class Graph:
         self.g = self.g.to_directed()
         self.label_reverse(parents)
 
-    def visualize(self, save=True, filename='testrun', ax=None, step=None, robot=False):    
+    def visualize(self, save=True, filename='testrun', ax=None, step=None, robot=False):  
+        def get_nudge(node='sta', searcher=None, jitter=0.2):
+            if node == 'sta': return (0, 0)
+            if searcher: seed(searcher.id)
+            return ((random()*2-1)*jitter, (random()*2-1)*jitter)
+
         if hasattr(self, 'fig_size'):
             fig_size = self.fig_size
         else:
@@ -261,12 +266,12 @@ class Graph:
                         node_colors.append('red')
                     elif node_type[node] == 'unvisited':
                         node_colors.append('grey')
-                    elif node_type[node] == 'visited':
+                    elif node_type[node] in 'visited':
                         node_colors.append('green')
                     elif not robot:
                         node_colors.append('cyan')
                     else:
-                        node_colors.append('grey')
+                        node_colors.append(['grey', 'green'][robot])
                 if not robot: ax.set_title(f'Time: {step if step != None else 0}\nRed: starting point     Green: cleared     Gray: may contain target     Cyan: has searcher', fontsize=17)
                 else: ax.set_title(f'Time: {step if step != None else 0}\nRed: starting point     Green: cleared     Gray: may contain target', fontsize=17)
                 node_label = {n: robot_per_node[n] if node_type[n]=='current' else '' for n in self.g.nodes()}
@@ -274,13 +279,10 @@ class Graph:
                 if not robot:
                     nx.draw_networkx_labels(self.g, labels=node_label, pos=pos, ax=ax)
                 else:
-                    def get_nudge(node='sta', jitter=0.2):
-                        if node == 'sta': return 0
-                        return (random()*2-1)*jitter
                     for n in self.g.nodes():
                         for s in robot_per_node_viz[n]:
                             x, y = pos[n]
-                            plt.gca().add_patch(plt.Circle((x+get_nudge(n), y+get_nudge(n)), 0.15, facecolor=to_rgba(s.color, alpha=0.5), edgecolor=s.color, zorder=10))
+                            plt.gca().add_patch(plt.Circle((x+get_nudge(n, searcher=s)[0], y+get_nudge(n, searcher=s)[1]), 0.15, facecolor=to_rgba(s.color, alpha=0.5), edgecolor=s.color, zorder=10))
                 tree_edges = self.t.g.edges()
                 non_tree_edges = self.B
                 edge_colors = []
@@ -331,7 +333,7 @@ class Graph:
                     elif not robot:
                         node_colors.append('cyan')
                     else:
-                        node_colors.append('grey')
+                        node_colors.append(['grey', 'green'][robot])
                 if not robot: ax.set_title(f'Time: {step if step != None else 0}\nRed: starting point     Green: cleared     Gray: may contain target     Cyan: has searcher', fontsize=17)
                 else: ax.set_title(f'Time: {step if step != None else 0}\nRed: starting point     Green: cleared     Gray: may contain target', fontsize=17)
                 node_label = {n: robot_per_node[n] if node_type[n]=='current' else '' for n in self.g.nodes()}
@@ -339,13 +341,10 @@ class Graph:
                 if not robot:
                     nx.draw_networkx_labels(self.g, labels=node_label, pos=pos, ax=ax)
                 else:
-                    def get_nudge(node='sta', jitter=0.2):
-                        if node == 'sta': return 0
-                        return (random()*2-1)*jitter
                     for n in self.g.nodes():
                         for s in robot_per_node_viz[n]:
                             x, y = pos[n]
-                            plt.gca().add_patch(plt.Circle((x+get_nudge(n), y+get_nudge(n)), 0.15, facecolor=to_rgba(s.color, alpha=0.5), edgecolor=s.color, zorder=10))
+                            plt.gca().add_patch(plt.Circle((x+get_nudge(n, searcher=s)[0], y+get_nudge(n, searcher=s)[1]), 0.15, facecolor=to_rgba(s.color, alpha=0.5), edgecolor=s.color, zorder=10))
                 G = self.g
                 curved_edges = [edge for edge in G.edges() if reversed(edge) in G.edges()]
                 straight_edges = list(set(G.edges()) - set(curved_edges))

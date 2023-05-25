@@ -14,8 +14,8 @@ class Searcher:
         Searcher.sid += 1
         self.id = Searcher.sid
         seed(self.id)
-        self.color = choice(['red', 'green', 'cyan', 'yellow', 'limegreen', 'blue', 'purple', 'orange'])
-        if guard: self.color = 'black'
+        self.color = choice(['red', 'green', 'cyan', 'purple', 'limegreen', 'blue', 'yellow', 'orange'])
+        if guard: self.color = 'white'
 
 class GSST:
     def __init__(self, graph:"Graph"=None, tree:"Graph"=None, filename='test_run') -> None:
@@ -87,7 +87,7 @@ class GSST:
         '''
         prev_node = self.searcher_locations[num]
         self.searcher_per_locations[prev_node] -= 1
-        prev_s = self.searcher_per_locations_viz[prev_node].pop()
+        prev_s = self.searcher_per_locations_viz[prev_node].pop(0)
 
         self.searcher_locations[num] = node
         self.searcher_per_locations[node] += 1
@@ -159,18 +159,13 @@ class GSST:
                 self.visualize_step(self.t)
 
     def visualize(self) -> None:
-        fns = []
-        for i in range(self.t + 1):
-            if not self.png_saved:
-                self.visualize_step(i)
-            fns.append(f'{self.fn}_{i}.png')
-        imageio.mimsave(f'{self.fn}.mp4', [imageio.imread(filename) for filename in fns], fps=2)
-        fns = []
-        for i in range(self.t + 1):
-            if not self.png_saved:
-                self.visualize_step(i)
-            fns.append(f'{self.fn}_{i}_robot.png')
-        imageio.mimsave(f'{self.fn}_robot.mp4', [imageio.imread(filename) for filename in fns], fps=2)
+        for suffix in ['', '_robot']:
+            fns = []
+            for i in range(self.t + 1):
+                if not self.png_saved:
+                    self.visualize_step(i)
+                fns.append(f'{self.fn}_{i}{suffix}.png')
+            imageio.mimsave(f'{self.fn}{suffix}.mp4', [imageio.imread(filename) for filename in fns], fps=2)
 
     def visualize_step(self, step: int) -> None:
         self.history[step].visualize(save=True, filename=f'{self.fn}_{step}.png', step=step)
@@ -244,7 +239,7 @@ class GSST_L(GSST):
         prev_loc = self.guard_locations[guard]
         if prev_loc != None:
             self.guard_per_locations[prev_loc] -= 1
-            self.guard_per_locations_viz[prev_loc].pop()
+            self.guard_per_locations_viz[prev_loc].pop(0)
         self.guard_locations[guard] = 'sta'
         self.guard_per_locations['sta'] += 1
         self.guard_per_locations_viz['sta'].append(Searcher(guard=True))
@@ -282,7 +277,7 @@ class GSST_L(GSST):
         self.guard_locations[guard] = node
         self.guard_per_locations[node] += 1
         self.guard_per_locations['sta'] -= 1
-        self.guard_per_locations_viz[node].append(self.guard_per_locations_viz['sta'].pop())
+        self.guard_per_locations_viz[node].append(self.guard_per_locations_viz['sta'].pop(0))
 
     def set_node_attributes(self) -> None:
         super().set_node_attributes()
